@@ -27,6 +27,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
+import com.googlecode.concurrenttrees.common.Iterables;
+
 import com.diffplug.common.base.Errors;
 import com.diffplug.spotless.FileSignature;
 import com.diffplug.spotless.FormatterFunc;
@@ -61,6 +63,7 @@ public class EclipseBasedStepBuilder {
 
 	private List<String> dependencies = new ArrayList<>();
 	private Iterable<File> settingsFiles = new ArrayList<>();
+	private Iterable<File> originalSettingsFiles = new ArrayList<>();
 
 	/** Initialize valid default configuration, taking latest version */
 	public EclipseBasedStepBuilder(String formatterName, Provisioner jarProvisioner, ThrowingEx.Function<State, FormatterFunc> stateToFormatter) {
@@ -116,8 +119,17 @@ public class EclipseBasedStepBuilder {
 	}
 
 	/** Set settings files containing Eclipse preferences */
+	// todo: physical set of settings files and logical set of settings files
+	//  physical files - different for every maven module because FileLocator creates temp copies
+	//  logical files - same for every module in the project e.g. my-settings.xml or openhab_codestyle.xml basically as defined in top-level pom.xml
+	public void setPreferences(Iterable<File> settingsFiles, Iterable<File> originalSettingsFiles) {
+		this.settingsFiles = settingsFiles;
+		this.originalSettingsFiles = originalSettingsFiles;
+	}
+
 	public void setPreferences(Iterable<File> settingsFiles) {
 		this.settingsFiles = settingsFiles;
+		this.originalSettingsFiles = settingsFiles;
 	}
 
 	/** Creates the state of the configuration. */
@@ -133,7 +145,8 @@ public class EclipseBasedStepBuilder {
 				formatterStepExt,
 				jarProvisioner,
 				dependencies,
-				settingsFiles);
+				settingsFiles,
+				originalSettingsFiles);
 	}
 
 	/**
@@ -151,9 +164,24 @@ public class EclipseBasedStepBuilder {
 		private final FileSignature settingsFiles;
 
 		/** State constructor expects that all passed items are not modified afterwards */
-		protected State(String formatterStepExt, Provisioner jarProvisioner, List<String> dependencies, Iterable<File> settingsFiles) throws IOException {
+		protected State(String formatterStepExt, Provisioner jarProvisioner,
+				List<String> dependencies,
+				Iterable<File> settingsFiles,
+				Iterable<File> originalSettingsFiles) throws IOException {
 			this.jarState = JarState.withoutTransitives(dependencies, jarProvisioner);
-			this.settingsFiles = FileSignature.signAsList(settingsFiles);
+
+			// create a FileSignature using logical files, if available
+			if (settingsFiles.equals(originalSettingsFiles)) {
+				this.settingsFiles = FileSignature.signAsList(settingsFiles);
+			} else {
+				String[] fileNames = Iterables.toList(originalSettingsFiles)
+						.stream()
+						.map(File::toString)
+						.toArray(String[]::new);
+
+				this.settingsFiles = new FileSignature(Iterables.toList(settingsFiles), fileNames,
+						new long[0], new long[0]);
+			}
 			this.formatterStepExt = formatterStepExt;
 		}
 

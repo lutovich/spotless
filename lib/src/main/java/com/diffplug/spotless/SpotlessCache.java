@@ -36,11 +36,14 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 public final class SpotlessCache {
 	/** Allows comparing keys based on their serialization. */
 	static final class SerializedKey {
+		// todo: revert -- needed to see the original key in debugger
+		transient final Serializable originalKey;
 		final byte[] serialized;
 		final int hashCode;
 
 		SerializedKey(Serializable key) {
 			Objects.requireNonNull(key);
+			originalKey = key;
 			serialized = LazyForwardingEquality.toBytes(key);
 			hashCode = Arrays.hashCode(serialized);
 		}
@@ -114,6 +117,13 @@ public final class SpotlessCache {
 		}
 		clear();
 		return true;
+	}
+
+	// todo: revert -- just of debugging
+	public static List<URLClassLoader> cachedClassLoaders() {
+		synchronized (instance) {
+			return new ArrayList<>(instance.cache.values());
+		}
 	}
 
 	private static final SpotlessCache instance = new SpotlessCache();

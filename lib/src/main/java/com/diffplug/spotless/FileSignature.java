@@ -44,6 +44,15 @@ public final class FileSignature implements Serializable {
 	private final long[] filesizes;
 	private final long[] lastModified;
 
+	// todo: hack constructor to create objects with only valid `files` and `filenames`
+	public FileSignature(List<File> files, String[] filenames, long[] filesizes,
+			long[] lastModified) {
+		this.files = files;
+		this.filenames = filenames;
+		this.filesizes = filesizes;
+		this.lastModified = lastModified;
+	}
+
 	/** Method has been renamed to {@link FileSignature#signAsSet}.
 	 * In case no sorting and removal of duplicates is required,
 	 * use {@link FileSignature#signAsList} instead.*/

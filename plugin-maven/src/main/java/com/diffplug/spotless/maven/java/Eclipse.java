@@ -15,8 +15,9 @@
  */
 package com.diffplug.spotless.maven.java;
 
+import static java.util.Collections.singletonList;
+
 import java.io.File;
-import java.util.Arrays;
 
 import org.apache.maven.plugins.annotations.Parameter;
 
@@ -40,7 +41,7 @@ public class Eclipse implements FormatterStepFactory {
 		eclipseConfig.setVersion(version == null ? EclipseJdtFormatterStep.defaultVersion() : version);
 		if (null != file) {
 			File settingsFile = stepConfig.getFileLocator().locateFile(file);
-			eclipseConfig.setPreferences(Arrays.asList(settingsFile));
+			eclipseConfig.setPreferences(singletonList(settingsFile), singletonList(new File(file)));
 		}
 		return eclipseConfig.build();
 	}

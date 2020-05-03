@@ -19,7 +19,13 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.net.URLClassLoader;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -39,6 +45,7 @@ import org.eclipse.aether.repository.RemoteRepository;
 import com.diffplug.spotless.Formatter;
 import com.diffplug.spotless.LineEnding;
 import com.diffplug.spotless.Provisioner;
+import com.diffplug.spotless.SpotlessCache;
 import com.diffplug.spotless.maven.cpp.Cpp;
 import com.diffplug.spotless.maven.generic.Format;
 import com.diffplug.spotless.maven.generic.LicenseHeader;
@@ -114,10 +121,28 @@ public abstract class AbstractSpotlessMojo extends AbstractMojo {
 
 	@Override
 	public final void execute() throws MojoExecutionException {
+		System.out.println("*** Running mojo " + getClass().getSimpleName() + " with classloader " + getClass().getClassLoader());
+
 		List<FormatterFactory> formatterFactories = getFormatterFactories();
 
 		for (FormatterFactory formatterFactory : formatterFactories) {
 			execute(formatterFactory);
+		}
+
+		if (!SpotlessCache.cachedClassLoaders().isEmpty()) {
+			System.out.println("+++");
+		}
+
+		for (URLClassLoader classLoader : SpotlessCache.cachedClassLoaders()) {
+			/*try {
+				Class<?> jobManagerClass = classLoader.loadClass("org.eclipse.core.internal.jobs.JobManager");
+				synchronized (jobManagerClass) {
+					Method shutdownMethod = jobManagerClass.getDeclaredMethod("shutdown");
+					shutdownMethod.invoke(null);
+				}
+			} catch (Throwable t) {
+				System.out.println(classLoader + " failed to shutdown JobManager: " + t);
+			}*/
 		}
 	}
 
