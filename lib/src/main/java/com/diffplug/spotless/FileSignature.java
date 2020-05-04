@@ -17,10 +17,12 @@ package com.diffplug.spotless;
 
 import static com.diffplug.spotless.MoreIterables.toNullHostileList;
 import static com.diffplug.spotless.MoreIterables.toSortedSet;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -103,13 +105,34 @@ public final class FileSignature implements Serializable {
 	private static byte[] digestOf(List<File> files) throws IOException {
 		try {
 			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-			for(File file : files) {
-				byte[] fileBytes = Files.readAllBytes(file.toPath());
-				messageDigest.update(fileBytes);
+			for (File file : files) {
+				if (!file.exists()) {
+					throw new IOException("File does not exist" + file);
+				}
+
+				if (file.isDirectory()) {
+					messageDigest.update(digestOfDirectory(file));
+				} else {
+					messageDigest.update(digestOfFile(file));
+				}
 			}
 			return messageDigest.digest();
 		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static byte[] digestOfFile(File file) throws IOException {
+		return Files.readAllBytes(file.toPath());
+	}
+
+	private static ByteBuffer digestOfDirectory(File dir) throws IOException {
+		File canonicalDir = dir.getCanonicalFile();
+		byte[] pathBytes = canonicalDir.getAbsolutePath().getBytes(UTF_8);
+		long lastModified = dir.lastModified();
+		ByteBuffer buffer = ByteBuffer.allocate(pathBytes.length + Long.BYTES);
+		buffer.put(pathBytes);
+		buffer.putLong(lastModified);
+		return buffer;
 	}
 }
