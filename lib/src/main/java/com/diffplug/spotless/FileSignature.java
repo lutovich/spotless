@@ -21,6 +21,9 @@ import static com.diffplug.spotless.MoreIterables.toSortedSet;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,9 +43,7 @@ public final class FileSignature implements Serializable {
 	@SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
 	private final transient List<File> files;
 
-	private final String[] filenames;
-	private final long[] filesizes;
-	private final long[] lastModified;
+	private final byte[] digest;
 
 	/** Method has been renamed to {@link FileSignature#signAsSet}.
 	 * In case no sorting and removal of duplicates is required,
@@ -82,18 +83,7 @@ public final class FileSignature implements Serializable {
 
 	private FileSignature(final List<File> files) throws IOException {
 		this.files = files;
-
-		filenames = new String[this.files.size()];
-		filesizes = new long[this.files.size()];
-		lastModified = new long[this.files.size()];
-
-		int i = 0;
-		for (File file : this.files) {
-			filenames[i] = file.getCanonicalPath();
-			filesizes[i] = file.length();
-			lastModified[i] = file.lastModified();
-			++i;
-		}
+		this.digest = digestOf(files);
 	}
 
 	/** Returns all of the files in this signature, throwing an exception if there are more or less than 1 file. */
@@ -110,4 +100,16 @@ public final class FileSignature implements Serializable {
 		}
 	}
 
+	private static byte[] digestOf(List<File> files) throws IOException {
+		try {
+			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+			for(File file : files) {
+				byte[] fileBytes = Files.readAllBytes(file.toPath());
+				messageDigest.update(fileBytes);
+			}
+			return messageDigest.digest();
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }
